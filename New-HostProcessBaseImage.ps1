@@ -1,12 +1,50 @@
+# Check if running as Administrator (required for reg load/unload)
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Error "This script must be run as Administrator to create registry hive files using 'reg load'."
+    Write-Host "Please right-click PowerShell and select 'Run as Administrator', then run this script again." -ForegroundColor Yellow
+    exit 1
+}
+
 Remove-Item -Path "build" -Force -Recurse -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path "build" | Out-Null
 New-Item -ItemType Directory -Path "build\layer" | Out-Null
 
-# Create the files that ProcessBaseLayer on Windows validates when unpackage images.
-# These files can be empty, they just need to exist at specific paths.
+# Create the files that ProcessBaseLayer on Windows validates when unpacking images.
+# On Windows Server 2025, these must be valid registry hives, not empty files.
 New-Item -ItemType Directory -Path "build\layer\Files\Windows\System32\config" -Force | Out-Null
+
+Write-Host "`nCreating minimal registry hive files..." -ForegroundColor Cyan
+
+# Create valid empty registry hive files using reg load/unload
+# This creates truly minimal empty hives without requiring saved registry keys
 foreach ($f in @('DEFAULT', 'SAM', 'SECURITY', 'SOFTWARE', 'SYSTEM')) {
-    New-Item -ItemType File -Name $f -Path "build\layer\Files\Windows\System32\config" | Out-Null
+    $hivePath = "build\layer\Files\Windows\System32\config\$f"
+    
+    # Ensure the file doesn't exist
+    if (Test-Path $hivePath) {
+        Remove-Item -Path $hivePath -Force
+    }
+    
+    # Create an empty hive by loading and immediately unloading
+    # This creates a minimal valid registry hive file
+    $tempKeyName = "HKLM\TempEmpty_$f"
+    $null = & reg.exe load $tempKeyName $hivePath 2>&1
+    
+    if ($LASTEXITCODE -eq 0) {
+        $null = & reg.exe unload $tempKeyName 2>&1
+        
+        if (Test-Path $hivePath) {
+            $fileSize = (Get-Item $hivePath).Length
+            Write-Host "  ✓ Created registry hive: $f ($fileSize bytes)" -ForegroundColor Green
+        } else {
+            Write-Error "Failed to create registry hive: $f"
+            exit 1
+        }
+    } else {
+        Write-Error "Failed to load registry hive: $f"
+        exit 1
+    }
 }
 
 # Add CC0 license to image.
