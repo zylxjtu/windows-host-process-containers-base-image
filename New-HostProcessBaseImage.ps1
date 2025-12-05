@@ -3,7 +3,7 @@ New-Item -ItemType Directory -Path "build" | Out-Null
 New-Item -ItemType Directory -Path "build\layer" | Out-Null
 
 # Create the files that ProcessBaseLayer on Windows validates when unpacking images.
-# On Windows Server 2025, these must be valid registry hives, not empty files.
+# On Windows Server 2025 and later, these must be valid registry hives, not empty files.
 New-Item -ItemType Directory -Path "build\layer\Files\Windows\System32\config" -Force | Out-Null
 
 Write-Host "`nCreating minimal registry hive files..." -ForegroundColor Cyan
@@ -64,8 +64,8 @@ $layerHash = (Get-FileHash -Algorithm SHA256 "build\layer\layer.tar").Hash.ToLow
 Write-Output "layer.tar hash: $layerHash"
 
 # Add json and VERSION files for layer
-New-Item -ItemType Directory -Path "build\image\${layerHash}" | Out-Null | Out-Null
-"1.0" | Out-File -FilePath "build\image\${layerHash}\VERSION" -Encoding ascii
+New-Item -ItemType Directory -Path "build\image\${layerHash}" | Out-Null
+"2.0" | Out-File -FilePath "build\image\${layerHash}\VERSION" -Encoding ascii
 Copy-Item -Path "build\layer\layer.tar" -Destination "build\image\${layerHash}\layer.tar"
 
 $now = [DateTime]::UtcNow.ToString("o")
