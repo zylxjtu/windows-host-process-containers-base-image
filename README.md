@@ -18,7 +18,7 @@ Using this image as a base for HostProcess containers has a few advantages over 
 Run [New-HostProcessBaseImage.ps1](./New-HostProcessBaseImage.ps1) from the repository root with PowerShell and `tar.exe` available:
 
 ```powershell
-# AMD64 is the default, preserving existing builds.
+# Generate a Windows AMD64 image (the default).
 .\New-HostProcessBaseImage.ps1
 
 # Generate a Windows ARM64 image.
@@ -27,7 +27,16 @@ Run [New-HostProcessBaseImage.ps1](./New-HostProcessBaseImage.ps1) from the repo
 
 The `-Architecture` parameter accepts `amd64` and `arm64`. It sets the architecture in both the image configuration and legacy layer metadata; the operating system remains `windows`.
 
-The image archive is written to `build\windows-host-process-containers-base-image.tar`, and its configuration hash is written to `build\image-id.txt`. Each run replaces the `build` directory, so save or import an archive before generating another architecture.
+The image archive and its configuration hash have architecture-specific filenames:
+
+| Architecture | Image archive | Configuration hash |
+| --- | --- | --- |
+| AMD64 (default) | `build\windows-host-process-containers-base-image-amd64.tar` | `build\image-id-amd64.txt` |
+| ARM64 | `build\windows-host-process-containers-base-image-arm64.tar` | `build\image-id-arm64.txt` |
+
+Intermediate files are kept in `build\amd64` and `build\arm64`. Each run recreates only the selected architecture's intermediate directory and replaces its archive and hash file. Building or rebuilding one architecture preserves the other architecture's outputs, so both variants can be generated sequentially in the same checkout.
+
+These filenames replace the previous unsuffixed archive and `build\image-id.txt`; update any external import or publishing scripts that reference the old paths.
 
 The layer contains no executable binaries, so either variant can be generated on an AMD64 build host. CI generates and checks both variants in separate jobs. Native binaries added by downstream images must target the selected Windows architecture.
 
