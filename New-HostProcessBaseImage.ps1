@@ -67,9 +67,8 @@ try {
 $layerHash = (Get-FileHash -Algorithm SHA256 "$buildPath\layer\layer.tar").Hash.ToLower()
 Write-Output "layer.tar hash: $layerHash"
 
-# Add json and VERSION files for layer
+# Add json file for layer
 New-Item -ItemType Directory -Path "$imagePath\${layerHash}" | Out-Null
-"2.0" | Out-File -FilePath "$imagePath\${layerHash}\VERSION" -Encoding ascii
 Copy-Item -Path "$buildPath\layer\layer.tar" -Destination "$imagePath\${layerHash}\layer.tar"
 
 $now = [DateTime]::UtcNow.ToString("o")
